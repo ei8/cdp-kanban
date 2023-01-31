@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ei8.Cortex.Diary.Plugins.Tree
+namespace ei8.Cortex.Diary.Plugins.Kanban
 {
     public enum ContextMenuOption
     {

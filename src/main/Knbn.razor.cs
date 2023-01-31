@@ -22,17 +22,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
 
-namespace ei8.Cortex.Diary.Plugins.Tree
+namespace ei8.Cortex.Diary.Plugins.Kanban
 {
-    public partial class Tree : ComponentBase, IDefaultComponentParameters, IDisposable
+    public partial class Knbn : ComponentBase, IDefaultComponentParameters, IDisposable
     {
         private bool reloading = true;
         private Dropdown optionsDropdown;
         private Timer refreshTimer;
-        private DotNetObjectReference<Tree>? dotNetHelper;
-        private TreePluginSettingsService pluginSettingsService;
+        private DotNetObjectReference<Knbn>? dotNetHelper;
+        private KnbnPluginSettingsService pluginSettingsService;
 
-        public Tree()
+        public Knbn()
         {
             this.internalSelectedOptionChanged = EventCallback.Factory.Create(this, new Func<ContextMenuOption, Task>(this.HandleSelectionOptionChanged));
         }
@@ -209,7 +209,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
             {
                 try
                 {
-                    var ns = await Tree.GetOrderedNeurons(this);
+                    var ns = await Knbn.GetOrderedNeurons(this);
                     var currentLastIndex = ns.ToList().FindLastIndex(nr => nr.Id == this.Children.Last().Neuron.Id);
                     var newNeurons = ns.Where((n, i) => i > currentLastIndex && !this.Children.Any(nvm => nvm.Neuron.Id == n.Id));
                     if (newNeurons.Count() > 0)
@@ -236,7 +236,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
             this.refreshTimer?.Dispose();
         }
 
-        private async static Task<IEnumerable<Neuron>> GetOrderedNeurons(Tree value)
+        private async static Task<IEnumerable<Neuron>> GetOrderedNeurons(Knbn value)
         {
             var ns = (await value.NeuronQueryService.SendQuery(
                         value.AvatarUrl,
@@ -282,7 +282,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
                     if (this.selectedDefaultRegionNeuron != null)
                     {
                         this.NavigationManager.NavigateTo(
-                            Tree.BuildAvatarUrl(this.NavigationManager.Uri, this.AvatarUrl) + "&regionid=" + value.Neuron.Id,
+                            Knbn.BuildAvatarUrl(this.NavigationManager.Uri, this.AvatarUrl) + "&regionid=" + value.Neuron.Id,
                             true);
                         this.selectedDefaultRegionNeuron = null;
                     }
@@ -339,7 +339,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
                 {
                     await this.SetReloading(true);
                     this.Children.Clear();
-                    var ns = await Tree.GetOrderedNeurons(this);
+                    var ns = await Knbn.GetOrderedNeurons(this);
                     var children = ns.Select(nr => new TreeNeuronViewModel(new Neuron(nr), this.AvatarUrl, this.NeuronQueryService));
                     ((List<TreeNeuronViewModel>)this.Children).AddRange(children);
                     this.NewItemsCount = 0;
@@ -423,7 +423,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
         private async Task LoadGraph()
         {
             var allNodes = new List<Node>();
-            Tree.ExtractNodes(this.Children.ToArray(), allNodes);
+            Knbn.ExtractNodes(this.Children.ToArray(), allNodes);
 
             var distinctNodes = new List<Node>();
             // get distinct nodes
@@ -435,7 +435,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
 
             // get links
             var links = new List<Link>();
-            Tree.ExtractLinks(this.Children.ToArray(), distinctNodes, links);
+            Knbn.ExtractLinks(this.Children.ToArray(), distinctNodes, links);
 
             await this.JsRuntime.InvokeVoidAsync("displayGraph", distinctNodes, links);
         }
@@ -444,7 +444,7 @@ namespace ei8.Cortex.Diary.Plugins.Tree
         {
             allNodes.AddRange(children.Select(c => new Node { id = c.Neuron.Id, tag = c.Neuron.Tag }).ToArray());
 
-            children.ToList().ForEach(c => Tree.ExtractNodes(c.Children, allNodes));
+            children.ToList().ForEach(c => Knbn.ExtractNodes(c.Children, allNodes));
         }
 
         private static void ExtractLinks(IEnumerable<TreeNeuronViewModel> children, List<Node> distinctNodes, List<Link> links)
@@ -462,12 +462,12 @@ namespace ei8.Cortex.Diary.Plugins.Tree
                 }
             });
 
-            children.ToList().ForEach(c => Tree.ExtractLinks(c.Children.ToArray(), distinctNodes, links));
+            children.ToList().ForEach(c => Knbn.ExtractLinks(c.Children.ToArray(), distinctNodes, links));
         }
 
         private void CopyAvatarUrl()
         {
-            this.JsRuntime.InvokeVoidAsync("copyToClipboard", Tree.BuildAvatarUrl(this.NavigationManager.Uri, this.AvatarUrl));
+            this.JsRuntime.InvokeVoidAsync("copyToClipboard", Knbn.BuildAvatarUrl(this.NavigationManager.Uri, this.AvatarUrl));
             this.ToastService.ShowInfo($"Copied successfully.");
             this.optionsDropdown.Hide();
         }
@@ -602,6 +602,6 @@ namespace ei8.Cortex.Diary.Plugins.Tree
         [Parameter]
         public ISubscriptionQueryService SubscriptionsQueryService { get; set; }
         [Parameter]
-        public IPluginSettingsService PluginSettingsService { get => this.pluginSettingsService; set { this.pluginSettingsService = (TreePluginSettingsService) value; } }
+        public IPluginSettingsService PluginSettingsService { get => this.pluginSettingsService; set { this.pluginSettingsService = (KnbnPluginSettingsService) value; } }
     }
 }
