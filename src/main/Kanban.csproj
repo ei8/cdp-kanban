@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <AssemblyName>ei8.Cortex.Diary.Plugins.Tree</AssemblyName>
-    <RootNamespace>ei8.Cortex.Diary.Plugins.Tree</RootNamespace>
-    <AssemblyVersion>0.1.2.5</AssemblyVersion>
+    <AssemblyName>ei8.Cortex.Diary.Plugins.Kanban</AssemblyName>
+    <RootNamespace>ei8.Cortex.Diary.Plugins.Kanban</RootNamespace>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
     <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
   
