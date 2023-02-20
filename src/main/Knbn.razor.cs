@@ -4,6 +4,7 @@ using ei8.Cortex.Diary.Application.Identity;
 using ei8.Cortex.Diary.Application.Neurons;
 using ei8.Cortex.Diary.Application.Settings;
 using ei8.Cortex.Diary.Application.Subscriptions;
+using ei8.Cortex.Diary.Plugins.Kanban;
 using ei8.Cortex.Diary.Port.Adapter.UI.ViewModels;
 using ei8.Cortex.Diary.Port.Adapter.UI.Views.Blazor.Common;
 using ei8.Cortex.Diary.Port.Adapter.UI.Views.Common;
@@ -14,6 +15,7 @@ using ei8.Cortex.Subscriptions.Common.Receivers;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.JSInterop;
 using System;
@@ -120,7 +122,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
 
         protected override void OnInitialized()
         {
-            this.Children = new List<TreeNeuronViewModel>();
+            this.Children = new List<TaskNeuronViewModel>();
         }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -137,11 +139,10 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                 }
                 bool urlSet = false;
                 var query = QueryHelpers.ParseQuery(uri.Query);
-                if (query.TryGetValue("avatarUrl", out var encodedAvatarUrl))
+                if (query.TryGetValue("avatarUrl", out var avatarUrl))
                 {
                     Uri uriResult;
-                    string decodedUrl = Nancy.Helpers.HttpUtility.UrlDecode(encodedAvatarUrl);
-                    bool validUrl = Uri.TryCreate(decodedUrl, UriKind.Absolute, out uriResult)
+                    bool validUrl = Uri.TryCreate(avatarUrl, UriKind.Absolute, out uriResult)
                         && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
                     if (validUrl)
                     {
@@ -149,7 +150,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                         Neuron regionNeuron = null;
                         IEnumerable<Neuron> postsynapticNeurons = null;
 
-                        if (Library.Client.QueryUrl.TryParse(decodedUrl, out QueryUrl urlResult))
+                        if (Library.Client.QueryUrl.TryParse(avatarUrl, out QueryUrl urlResult))
                         {
                             if (query.TryGetValue("regionId", out var regionId))
                             {
@@ -170,11 +171,78 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                                     }
                                     ))?.Items;
                             }
+
+                            if (!string.IsNullOrWhiteSpace(this.pluginSettingsService.PosterUrls.InstantiatesTask))
+                            {
+                               var it = (await this.NeuronQueryService.GetNeurons(
+                                    urlResult.AvatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        ExternalReferenceUrl = new string[] { this.pluginSettingsService.PosterUrls.InstantiatesTask }
+                                    }))
+                                    .Items
+                                    .FirstOrDefault();
+
+                                it.ValidateExists(this.ToastService, ErrorMessage.MissingExternalInstantiatesTask);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(this.pluginSettingsService.PosterUrls.HasStatusOfBacklog))
+                            {
+                                var hsob = (await this.NeuronQueryService.GetNeurons(
+                                    urlResult.AvatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        ExternalReferenceUrl = new string[] { this.pluginSettingsService.PosterUrls.HasStatusOfBacklog }
+                                    }))
+                                    .Items
+                                    .FirstOrDefault();
+                                hsob.ValidateExists(this.ToastService, ErrorMessage.MissingExternalHasStatusOfBacklog);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(this.pluginSettingsService.PosterUrls.HasStatusOfPrioritized))
+                            {
+                                var hsop = (await this.NeuronQueryService.GetNeurons(
+                                    urlResult.AvatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        ExternalReferenceUrl = new string[] { this.pluginSettingsService.PosterUrls.HasStatusOfPrioritized }
+                                    }))
+                                    .Items
+                                    .FirstOrDefault();
+                                hsop.ValidateExists(this.ToastService, ErrorMessage.MissingExternalHasStatusOfPrioritized);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(this.pluginSettingsService.PosterUrls.HasStatusOfInProgress))
+                            {
+                                var hsoi = (await this.NeuronQueryService.GetNeurons(
+                                    urlResult.AvatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        ExternalReferenceUrl = new string[] { this.pluginSettingsService.PosterUrls.HasStatusOfInProgress }
+                                    }))
+                                    .Items
+                                    .FirstOrDefault();
+                                hsoi.ValidateExists(this.ToastService, ErrorMessage.MissingExternalHasStatusOfInProgress);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(this.pluginSettingsService.PosterUrls.HasStatusOfDone))
+                            {
+                                var hsod = (await this.NeuronQueryService.GetNeurons(
+                                    urlResult.AvatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        ExternalReferenceUrl = new string[] { this.pluginSettingsService.PosterUrls.HasStatusOfDone }
+                                    }))
+                                    .Items
+                                    .FirstOrDefault();
+                                hsod.ValidateExists(this.ToastService, ErrorMessage.MissingExternalHasStatusOfDone);
+                            }
+
                         }
 
                         await Task.Run(() =>
                         {
-                            this.AvatarUrl = decodedUrl;
+                            this.AvatarUrl = avatarUrl;
                             this.InitialRegionNeuron = regionNeuron;
                             this.InitialPostsynapticNeurons = postsynapticNeurons;
                             this.Reload();
@@ -218,7 +286,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                             await this.JsRuntime.InvokeAsync<string>("PlaySound");
 
                         this.NewItemsCount += newNeurons.Count();
-                        newNeurons.ToList().ForEach(n => this.Children.Add(new TreeNeuronViewModel(new Neuron(n), this.AvatarUrl, this.NeuronQueryService)));
+                        newNeurons.ToList().ForEach(n => this.Children.Add(new TaskNeuronViewModel(new Neuron(n), this.AvatarUrl, this.NeuronQueryService)));
                         await this.InvokeAsync(() => this.StateHasChanged());
                     }
                 }
@@ -257,7 +325,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
         public string AvatarUrl { get; set; }
 
         [Parameter]
-        public IList<TreeNeuronViewModel> Children { get; set; } = new List<TreeNeuronViewModel>();
+        public IList<TaskNeuronViewModel> Children { get; set; } = new List<TaskNeuronViewModel>();
 
         private bool IsConfirmVisible { get; set; } = false;
 
@@ -312,7 +380,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
 
         private bool ControlsEnabled { get; set; } = true;
 
-        private TreeNeuronViewModel SelectedNeuron { get; set; } = null;
+        private TaskNeuronViewModel SelectedNeuron { get; set; } = null;
 
         private Neuron InitialRegionNeuron { get; set; } = null;
 
@@ -328,7 +396,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
             }
         }
 
-        private string ProcessSelectionTag(string format) => this.SelectedNeuron is TreeNeuronViewModel ?
+        private string ProcessSelectionTag(string format) => this.SelectedNeuron is TaskNeuronViewModel ?
                 string.Format(format, this.SelectedNeuron.Neuron.Tag) :
                 "[Error: Not a valid Neuron]";
 
@@ -340,15 +408,24 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                     await this.SetReloading(true);
                     this.Children.Clear();
                     var ns = await Knbn.GetOrderedNeurons(this);
-                    var children = ns.Select(nr => new TreeNeuronViewModel(new Neuron(nr), this.AvatarUrl, this.NeuronQueryService));
-                    ((List<TreeNeuronViewModel>)this.Children).AddRange(children);
+                    var children = ns.Select(nr => new TaskNeuronViewModel(new Neuron(nr), this.AvatarUrl, this.NeuronQueryService));
+                    ((List<TaskNeuronViewModel>)this.Children).AddRange(children);
                     this.NewItemsCount = 0;
 
                     if (this.RenderDirection == RenderDirectionValue.BottomToTop)
                         await this.ScrollToFragment("bottom");
 
                     QueryUrl.TryParse(this.AvatarUrl, out QueryUrl result);
-                    this.serverPushPublicKey = (await this.SubscriptionsQueryService.GetServerConfigurationAsync(result.AvatarUrl)).ServerPublicKey;
+                    
+                    //this.serverPushPublicKey = (await this.SubscriptionsQueryService.GetServerConfigurationAsync(result.AvatarUrl)).ServerPublicKey;
+
+                    this.PrioritizedTasks = await GetPrioritizedTasks(result.AvatarUrl);
+
+                    this.Done = await GetDoneTasks(result.AvatarUrl);
+
+                    this.InProgress = await GetInProgressTasks(result.AvatarUrl);
+
+                    this.BacklogTasks = await GetBacklogTasks(result.AvatarUrl);
 
                     var objRef = DotNetObjectReference.Create(this);
                     await this.JsRuntime.InvokeVoidAsync("Subscribe", objRef, this.serverPushPublicKey);
@@ -359,7 +436,6 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                 postActionInvoker: async () =>
                 {
                     await this.SetReloading(false);
-                    await this.LoadGraph();
                 }
             );
         }
@@ -418,51 +494,6 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                     this.ToastService.ShowError(ex.Message);
                 }
             }
-        }
-
-        private async Task LoadGraph()
-        {
-            var allNodes = new List<Node>();
-            Knbn.ExtractNodes(this.Children.ToArray(), allNodes);
-
-            var distinctNodes = new List<Node>();
-            // get distinct nodes
-            allNodes.ForEach(n =>
-            {
-                if (!distinctNodes.Any(dn => dn.id == n.id))
-                    distinctNodes.Add(new Node() { id = n.id, tag = n.tag });
-            });
-
-            // get links
-            var links = new List<Link>();
-            Knbn.ExtractLinks(this.Children.ToArray(), distinctNodes, links);
-
-            await this.JsRuntime.InvokeVoidAsync("displayGraph", distinctNodes, links);
-        }
-
-        private static void ExtractNodes(IEnumerable<TreeNeuronViewModel> children, List<Node> allNodes)
-        {
-            allNodes.AddRange(children.Select(c => new Node { id = c.Neuron.Id, tag = c.Neuron.Tag }).ToArray());
-
-            children.ToList().ForEach(c => Knbn.ExtractNodes(c.Children, allNodes));
-        }
-
-        private static void ExtractLinks(IEnumerable<TreeNeuronViewModel> children, List<Node> distinctNodes, List<Link> links)
-        {
-            children.ToList().ForEach(c =>
-            {
-                if (c.Neuron.Type != RelativeType.NotSet)
-                {
-                    var tsource = distinctNodes.FindIndex(n => n.id == c.Neuron.Terminal.PresynapticNeuronId);
-                    var ttarget = distinctNodes.FindIndex(n => n.id == c.Neuron.Terminal.PostsynapticNeuronId);
-
-                    var typeVal = (c.Neuron.Terminal.Strength == "1" ? "full" : "partial") + (c.Neuron.Terminal.Effect == "-1" ? "inhibit" : "excite");
-                    if (!links.Any(gl => gl.source == tsource && gl.target == ttarget))
-                        links.Add(new Link() { source = tsource, target = ttarget, type = typeVal });
-                }
-            });
-
-            children.ToList().ForEach(c => Knbn.ExtractLinks(c.Children.ToArray(), distinctNodes, links));
         }
 
         private void CopyAvatarUrl()
@@ -532,7 +563,7 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
                         throw new InvalidOperationException("User not signed-in.");
 
                     return result;
-                },                
+                },
                 () => "E-mail Subscription" + emailDescription,
                 () => this.optionsDropdown.Hide()
             );
@@ -547,6 +578,11 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
         private string pushAuth;
         private string pushEndpoint;
         private string serverPushPublicKey;
+
+        public IEnumerable<Neuron> PrioritizedTasks { get; set; }
+        public IEnumerable<Neuron> BacklogTasks { get; set; }
+        public IEnumerable<Neuron> InProgress { get; set; }
+        public IEnumerable<Neuron> Done { get; set; }
 
         [JSInvokable]
         public void SetPermissionStatus(string status)
@@ -581,19 +617,19 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
 
         [Parameter]
         public IHttpContextAccessor HttpContextAccessor { get; set; }
-        [Parameter] 
+        [Parameter]
         public INeuronQueryService NeuronQueryService { get; set; }
-        [Parameter] 
+        [Parameter]
         public INeuronApplicationService NeuronApplicationService { get; set; }
-        [Parameter] 
+        [Parameter]
         public ITerminalApplicationService TerminalApplicationService { get; set; }
-        [Parameter] 
+        [Parameter]
         public IToastService ToastService { get; set; }
-        [Parameter] 
+        [Parameter]
         public NavigationManager NavigationManager { get; set; }
-        [Parameter] 
+        [Parameter]
         public IJSRuntime JsRuntime { get; set; }
-        [Parameter] 
+        [Parameter]
         public ISettingsService SettingsService { get; set; }
         [Parameter]
         public IIdentityService IdentityService { get; set; }
@@ -603,5 +639,75 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
         public ISubscriptionQueryService SubscriptionsQueryService { get; set; }
         [Parameter]
         public IPluginSettingsService PluginSettingsService { get => this.pluginSettingsService; set { this.pluginSettingsService = (KnbnPluginSettingsService) value; } }
+    
+
+        public async Task<IEnumerable<Neuron>> GetPrioritizedTasks(string avatarUrl)
+        {
+            var PrioTasks = (await this.NeuronQueryService.GetNeurons(
+                                    avatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        PostsynapticExternalReferenceUrl = new string[]
+                                        {
+                                            this.pluginSettingsService.PosterUrls.HasStatusOfPrioritized,
+                                            this.pluginSettingsService.PosterUrls.InstantiatesTask
+                                        }
+                                    }))
+                                    .Items.ToList();
+
+            return PrioTasks;
+        }
+
+        public async Task<IEnumerable<Neuron>> GetBacklogTasks(string avatarUrl)
+        {
+            var BacklogTasks = (await this.NeuronQueryService.GetNeurons(
+                                    avatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        PostsynapticExternalReferenceUrl = new string[]
+                                        {
+                                            this.pluginSettingsService.PosterUrls.HasStatusOfBacklog,
+                                            this.pluginSettingsService.PosterUrls.InstantiatesTask
+                                        }
+                                    }))
+                                    .Items.ToList();
+
+            return BacklogTasks;
+        }
+
+        public async Task<IEnumerable<Neuron>> GetDoneTasks(string avatarUrl)
+        {
+            var DoneTasks = (await this.NeuronQueryService.GetNeurons(
+                                    avatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        PostsynapticExternalReferenceUrl = new string[]
+                                        {
+                                            this.pluginSettingsService.PosterUrls.HasStatusOfDone,
+                                            this.pluginSettingsService.PosterUrls.InstantiatesTask
+                                        }
+                                    }))
+                                    .Items.ToList();
+
+            return DoneTasks;
+        }
+
+        public async Task<IEnumerable<Neuron>> GetInProgressTasks(string avatarUrl)
+        {
+            var InProgressTasks = (await this.NeuronQueryService.GetNeurons(
+                                    avatarUrl,
+                                    new NeuronQuery()
+                                    {
+                                        PostsynapticExternalReferenceUrl = new string[]
+                                        {
+                                            this.pluginSettingsService.PosterUrls.HasStatusOfInProgress,
+                                            this.pluginSettingsService.PosterUrls.InstantiatesTask
+                                        }
+                                    }))
+                                    .Items.ToList();
+
+            return InProgressTasks;
+        }
+
     }
 }

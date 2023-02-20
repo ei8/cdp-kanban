@@ -9,6 +9,20 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
 
         public int UpdateCheckInterval => int.TryParse(this.Configuration["UpdateCheckInterval"], out int uci) ? uci : KnbnPluginSettingsService.DefaultUpdateCheckInterval;
 
-        public IConfiguration Configuration { get; set; }
+        private IConfiguration configuration;
+        public IConfiguration Configuration
+        {
+            get => this.configuration;
+            set
+            {
+                this.configuration = value;
+
+                if (this.configuration != null)
+                {
+                    this.PosterUrls = new PosterUrls(this.configuration);
+                }
+            }
+        }
+        public PosterUrls PosterUrls { get; set; }
     }
 }
