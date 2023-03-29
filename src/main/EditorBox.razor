@@ -75,7 +75,7 @@
                             <ValidationMessage For=@(() => this.editorNeuronViewModel.Terminals) />
                         </div>
                     </div>
-                    <div class="row"
+                    <div class="row">
                         <div class="col py-1 px-0">
                             <KeyWatcherInputTextArea class="form-control w-100" placeholder="Tag" @bind-Value="@this.editorNeuronViewModel.Tag" rows="4" @onkeydown="@this.KeyPress" />
                             <ValidationMessage For=@(() => this.editorNeuronViewModel.Tag) />
@@ -336,7 +336,7 @@
     }
 
     [Parameter]
-    public string AvatarUrl { get; set; }
+    public string AvatarUrl { get; set; } = "http://192.168.100.9:65101/cortex/neurons";
 
     private EditorTerminalViewModel EditTerminal { get; set; }
 
