@@ -1,0 +1,83 @@
+﻿@using Blazored.FluentValidation
+@using Blazored.Toast.Services;
+@using Blazorise
+@using Blazorise.Icons.FontAwesome;
+@using Microsoft.AspNetCore.Components.Web;
+@using ei8.Cortex.Diary.Application.Notifications;
+@using ei8.Cortex.Diary.Port.Adapter.UI.ViewModels;
+@using ei8.Cortex.Diary.Port.Adapter.UI.Views.Blazor.Common;
+@using ei8.Cortex.Diary.Port.Adapter.UI.Views.Common;
+@using ei8.Cortex.Library.Client;
+@using ei8.Cortex.Library.Common;
+@using Microsoft.AspNetCore.Components.Forms
+@using ei8.Cortex.Diary.Application.Neurons
+
+@inject INeuronQueryService neuronQueryService;
+@inject INeuronApplicationService neuronApplicationService;
+@inject INotificationApplicationService notificationApplicationService;
+@inject ITerminalApplicationService terminalApplicationService;
+@inject IToastService toastService;
+
+<div class="column col-md-3 col-lg-3 col-xl-3">
+    <div class="row">
+        <div class="col-md-9 col-lg-9">
+            <h4 class="pb-3">@Title<badge class="badge bg-success"></badge></h4>
+        </div>
+        @if (Title == "Backlog") {
+            <div class="col-md-3 col-lg-3">
+                <Button Size="Size.ExtraSmall" Color="Color.Primary" Clicked="@ShowModal">
+                    <i class="fas fa-plus"></i>
+                </Button>
+            </div>
+        }
+    </div>
+    @if (Tasks is not null && Tasks.Any()) {
+        @foreach (var neuron in Tasks) {
+            <div class="card">
+                <h6>@neuron.Tag</h6>
+                <p class="text-muted">Neuron</p>
+            </div>
+        }
+    }
+</div>
+
+<Modal @ref="modalRef">
+    <ModalContent>
+        <ModalHeader>
+            <ModalTitle>Add Task</ModalTitle>
+            <CloseButton />
+        </ModalHeader>
+        <ModalBody>
+            <div class="container-fluid">
+                <EditForm EditContext="@this.editContext" OnSubmit=@this.FormSubmitted>
+                    <FluentValidationValidator />
+                    <div class="row">
+                        <div class="col p-0">
+                            <div class="container-fluid">
+                                <div class="row">
+                                    <div class="col py-1 px-0">
+                                        <KeyWatcherInputTextArea class="form-control w-100" placeholder="Task" @bind-Value="@this.editorNeuronViewModel.Tag" rows="4" @onkeydown="@this.KeyPress" />
+                                        <ValidationMessage For=@(() => this.editorNeuronViewModel.Tag) />
+                                    </div>
+                                </div>
+                                <div class="row pt-1">
+                                    <div class="col-auto ml-auto p-0">
+                                        <button type="submit" class="btn btn-primary btn-sm ml-1 p-1 rounded-square" disabled="@(this.sending)">
+                                            @if (this.sending) {
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            }
+                                            else {
+                                                <Blazorise.Icon Name="FontAwesomeIcons.PaperPlane" Class="px-1" />
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </ModalBody>
+    </ModalContent>
+</Modal>
+

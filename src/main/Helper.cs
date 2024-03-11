@@ -1,4 +1,5 @@
 ﻿using Blazored.Toast.Services;
+using ei8.Cortex.Library.Common;
 using Microsoft.AspNetCore.Components;
 using neurUL.Common.Domain.Model;
 using neurUL.Common.Http;
@@ -17,6 +18,19 @@ namespace ei8.Cortex.Diary.Plugins.Kanban
         {
             optionSetter(ContextMenuOption.NotSet);
             optionSetter(ContextMenuOption.New);
+        }
+
+        internal static bool ValidateExists(this Neuron value, IToastService toastService, string errorMessage)
+        {
+            bool result = true;
+
+            if (value == null)
+            {
+                toastService.ShowError(errorMessage);
+                result = false;
+            }
+
+            return result;
         }
     }
 }
